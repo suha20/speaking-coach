@@ -196,8 +196,8 @@ export default function Home() {
             marginTop: 8,
             padding: "10px 14px",
             borderRadius: 10,
-            border: "1px solid #111",
-            background: "#fff",
+            border: "1px solid #fcf9f9",
+            background: "#62be3e",
             cursor: "pointer",
             width: "fit-content",
           }}
