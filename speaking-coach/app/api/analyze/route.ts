@@ -15,7 +15,7 @@ type AnalysisResult = {
   score: {
     overall: number;
     structure: number;
-    clarity: number;
+    clarity: number; 
     specificity: number;
     confidence: number;
   };

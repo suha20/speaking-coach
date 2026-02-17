@@ -74,6 +74,8 @@ export default function Home() {
 
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [durationSec, setDurationSec] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -150,6 +152,9 @@ export default function Home() {
         setAudioBlob(blob);
 
         setStatus("stopped");
+        setTimeout(() => {
+        analyzeRecording();
+        }, 0);
       };
 
       recorder.onerror = () => {
@@ -172,11 +177,49 @@ export default function Home() {
     }
   };
 
+
+
   const stopRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) return;
-    if (recorder.state === "recording") recorder.stop();
-  };
+  const recorder = mediaRecorderRef.current;
+  if (!recorder) return;
+  if (recorder.state === "recording") recorder.stop();
+};
+
+
+  const analyzeRecording = async () => {
+  if (!audioBlob) return;
+
+  try {
+    setIsUploading(true);
+    setErrorMsg(null);
+
+    const form = new FormData();
+    form.append("prompt", prompt);
+    form.append("durationSec", String(durationSec));
+    form.append("audio", audioBlob, `recording.webm`);
+
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      body: form,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Upload failed with status ${res.status}`);
+    }
+
+    const data = await res.json();
+    sessionStorage.setItem("speakingCoach:lastResult", JSON.stringify(data));
+    window.location.href = "/results";
+  } catch (err: any) {
+    setStatus("error");
+    setErrorMsg(`Upload/analyze failed: ${err?.message ?? "Unknown error"}`);
+  } finally {
+    setIsUploading(false);
+  }
+};
+
+
 
   return (
     <main style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "system-ui, Arial" }}>
@@ -209,9 +252,6 @@ export default function Home() {
 
 
 
-
-
-
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontWeight: 600 }}>Prompt</span>
           <select
@@ -231,7 +271,7 @@ export default function Home() {
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button
             onClick={startRecording}
-            disabled={isRecording || status === "requesting_permission"}
+            disabled={isRecording || status === "requesting_permission" || isUploading}
             style={{
               padding: "10px 14px",
               borderRadius: 10,
@@ -246,7 +286,7 @@ export default function Home() {
 
           <button
             onClick={stopRecording}
-            disabled={!isRecording}
+            disabled={!isRecording || isUploading}
             style={{
               padding: "10px 14px",
               borderRadius: 10,
