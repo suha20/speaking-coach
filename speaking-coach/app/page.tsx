@@ -63,11 +63,6 @@ export default function Home() {
 
 
 
-
-
-
-
-
   const [prompt, setPrompt] = useState<string>(DEFAULT_PROMPTS[0]);
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -153,7 +148,7 @@ export default function Home() {
 
         setStatus("stopped");
         setTimeout(() => {
-        analyzeRecording();
+        analyzeRecording(blob, elapsed);
         }, 0);
       };
 
@@ -186,38 +181,36 @@ export default function Home() {
 };
 
 
-  const analyzeRecording = async () => {
-  if (!audioBlob) return;
+  const analyzeRecording = async (blob: Blob, duration: number) => {
+    try {
+      setIsUploading(true);
+      setErrorMsg(null);
 
-  try {
-    setIsUploading(true);
-    setErrorMsg(null);
+      const form = new FormData();
+      form.append("prompt", prompt);
+      form.append("durationSec", String(duration));
+      form.append("audio", blob, "recording.webm");
 
-    const form = new FormData();
-    form.append("prompt", prompt);
-    form.append("durationSec", String(durationSec));
-    form.append("audio", audioBlob, `recording.webm`);
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        body: form,
+      });
 
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      body: form,
-    });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Upload failed with status ${res.status}`);
+      }
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || `Upload failed with status ${res.status}`);
+      const data = await res.json();
+      sessionStorage.setItem("speakingCoach:lastResult", JSON.stringify(data));
+      window.location.href = "/results";
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMsg(`Upload/analyze failed: ${err?.message ?? "Unknown error"}`);
+    } finally {
+      setIsUploading(false);
     }
-
-    const data = await res.json();
-    sessionStorage.setItem("speakingCoach:lastResult", JSON.stringify(data));
-    window.location.href = "/results";
-  } catch (err: any) {
-    setStatus("error");
-    setErrorMsg(`Upload/analyze failed: ${err?.message ?? "Unknown error"}`);
-  } finally {
-    setIsUploading(false);
-  }
-};
+  };
 
 
 
