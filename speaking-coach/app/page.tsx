@@ -248,34 +248,46 @@ export default function Home() {
       setIsUploading(true);
       setErrorMsg(null);
 
+      let uploadBlob: Blob = blob;
+      let fileName = "recording.wav";
+
+      try {
+        uploadBlob = await blobToWav(blob);
+      } catch {
+  // If conversion fails, we still try to upload original,
+  // but Gemini may reject unsupported formats.
+      uploadBlob = blob;
+      fileName = "recording.webm";
+      }
+
       const form = new FormData();
       form.append("prompt", prompt);
       form.append("durationSec", String(duration));
-      form.append("audio", blob, "recording.webm");
+      form.append("audio", uploadBlob, fileName);
 
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        body: form,
-      });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Upload failed with status ${res.status}`);
-      }
+      const res = await fetch("/api/analyze", { method: "POST", body: form });
+    if (!res.ok) throw new Error(await res.text());
 
-      const data = await res.json();
-      sessionStorage.setItem("speakingCoach:lastResult", JSON.stringify(data));
-      window.location.href = "/results";
-    } catch (err: any) {
-      setStatus("error");
-      setErrorMsg(`Upload/analyze failed: ${err?.message ?? "Unknown error"}`);
-    } finally {
-      setIsUploading(false);
-    }
-  };
+    const data = await res.json(); // <-- this is the “JSON handling”
+    sessionStorage.setItem("speakingCoach:lastResult", JSON.stringify(data));
+    window.location.href = "/results";
+  } catch (err: any) {
+    setStatus("error");
+    setErrorMsg(`Upload/analyze failed: ${err?.message ?? "Unknown error"}`);
+  } finally {
+    setIsUploading(false);
+  }
+};
 
 
 
+
+
+
+
+
+//UI ELEMENTS GOES INSIDE HOME FUNCTION NOT THE ANALYZERECORDING
   return (
     <main style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "system-ui, Arial" }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Speaking Coach</h1>

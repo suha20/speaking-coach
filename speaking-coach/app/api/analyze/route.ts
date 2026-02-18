@@ -106,6 +106,26 @@ export async function POST(req: Request) {
     }
 
     const mimeType = audio.type || "audio/webm";
+    console.log("Uploaded:", { name: audio.name, type: mimeType, size: audio.size });
+
+    const supported = new Set([
+      "audio/wav",
+      "audio/x-wav",
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/aac",
+      "audio/ogg",
+      "audio/flac",
+      "audio/aiff",
+    ]);
+
+    if (!supported.has(mimeType)) {
+      return NextResponse.json(
+        { ok: false, error: `Unsupported audio type: ${mimeType}. Please upload WAV/MP3/AAC/OGG/FLAC.` },
+        { status: 400 }
+      );
+    }
+
     const base64Audio = Buffer.from(await audio.arrayBuffer()).toString("base64");
 
     // 1) Transcribe
